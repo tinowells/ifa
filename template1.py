@@ -30,12 +30,16 @@ if see_data=='y':
 else:
     print(' ')
 
-## Plotting one randomly
-for ii in range(d1):
-    plt.plot(tdata[ii,0,:],c='b')
+nave = np.empty(d3)
+for ii in range(d3):
+    randint = np.random.randint(0,d1)
+    print("Random int selected: {}".format(randint))
+    plt.plot(tdata[randint,0,:],linewidth=0.5)
+    nave[ii] = np.average(tdata[:,0,ii])
+    
 
-plt.plot(np.average(tdata[:,0,:]))
+plt.plot(nave,".-",c='r',label="$\overline{nData}$",linewidth=0.5)
+pdb.set_trace()
 plt.legend()
 plt.show()
 
-pdb.set_trace()
