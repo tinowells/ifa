@@ -14,7 +14,7 @@ def read_file(filename = '180925_LED_pulse_3.0V_1000f_cube.fits'):
     cat = pd.DataFrame(cat1)
     return cat
 
-def plot(meds_norm, sum_arr, nrows = 1, ncols = 1):
+def plot(meds_norm, sum_arr, nrows = 4, ncols = 1):
     gs = gridspec.GridSpec(nrows, ncols)
     split_reduced = np.array_split(sum_arr, nrows)
     split_norm = np.array_split(meds_norm,nrows)
