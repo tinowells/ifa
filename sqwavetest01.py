@@ -13,6 +13,8 @@ from array import *
 import matplotlib.gridspec as gridspec
 from astropy.io import fits
 import argparse
+import scipy
+import timeconstantfunc as tcf
 
 ## if peaks are not detected correctly, redefine tolerance parameter
 
@@ -22,7 +24,7 @@ ylbl = '$\Delta$ ADU'
 
 parser = argparse.ArgumentParser(description='Frequency Response Reduction & Ramp Extraction Plots')
 parser.add_argument('-fits','--fitsfile',type=str,metavar='',required=True,help='Fits File you would like to reduce and plot.')
-parser.add_argument('-tol','--peak_tolerance',type=int,metavar='',required=False,help='The amount of tolerance between frame n and frame n+npeaksteps to find peak',default=5)
+parser.add_argument('-tol','--peak_tolerance',type=int,metavar='',required=False,help='The amount of tolerance between frame n and frame n+npeaksteps to find peak',default=12)
 parser.add_argument('-nsteps','--nsteps',metavar='',required=False,type=int,help='How many steps to loo ahead when trying to find a peak',default=50)
 parser.add_argument('-save','--savefigures',metavar='',required=False,type=bool,help='True if you would like to save figures, False is you dont. Defaults to False.',default=False)
 parser.add_argument('-write','--writeout',metavar='',required=False,type=bool,help='True if you want full statistics textfile on code and data, False if you dont. Defaults to False.',default=False)
@@ -88,11 +90,16 @@ def check_peakidx(data,peaks):
     peak_idx = []
     idx_bool = np.diff(peaks) >= 350
     idx = np.where(idx_bool==True)[0].tolist()
-    #pdb.set_trace()
+    #plt.plot(data,c='r')
+    #for ii in range(len(peaks)):
+    #    plt.axvline(x=peaks[ii],linewidth=0.5,c='b')
+    #plt.show()
+    
     for ii in range(len(idx)):
         peak_idx.append(peaks[idx[ii]])
     print('\t... outlier peaks extracted.')
     adjusted_peaks = refine_peaks(data,peak_idx)
+
     return adjusted_peaks
 
 def refine_peaks(data,peaks,ledoffset=True):
@@ -227,7 +234,7 @@ def plot_data(data,offidx,ridx):
     plt.ylabel(ylbl)
     plt.savefig("{}{}_coadded_mean.pdf".format(dfile[0:7],dfile[-7:-5]))
     plt.show()
-
+    pdb.set_trace()
 
 
 if __name__=='__main__':
@@ -237,13 +244,29 @@ if __name__=='__main__':
     allpeakidx = detect_peaks(reduced_data)
     offsetidx = check_peakidx(reduced_data,allpeakidx)
     ramp_idx,ramp_offset = get_ramp_idx(offsetidx)
+
+    timeconstant_onoff = tcf.calc_timeconstant(reduced_data,ramp_idx,offsetidx,ramp_offset,flipdata=True)
+    timeconstant_offon = tcf.calc_timeconstant(reduced_data,ramp_idx,offsetidx,ramp_offset)
+    #timeconstant_onoff = tcf.calc_timeconstant(reduced_data,ramp_idx,offsetidx,ramp_offset,flipdata=True)
+
+    #get_timeconstant(reduced_data,ramp_idx,offsetidx)
+    pdb.set_trace()
     plot_data(reduced_data,offsetidx,ramp_idx)
+
+    ## compute avg_ledon for all three ramps [129-384]
+    ## compute avg_ledoff for all three ramps [513-768]
+    ## compute delta_onoff = avg_ledon - avg_ledoff for each ramp
+    ## subtract avg_ledoff from all data in that ramp (do for all three ramps)
+    ## normalize the data: divide each value by delta_onoff (for all three ramps)
+    ## plot linear and log scales
+    ## on log scale, calculate slope of function to get time constant
     #pdb.set_trace()
 
     ## pylatex for documentation
     ## SNR proportional root N 
     ## second reduction pipeline w/ columns, then MCMC QAL-EQW-ABS 3-D density code
 
+    ## Plot LED-off-to-LED-on values of co-added ramps on natural log plot, use None-type for dADU <= int(zero)
+    ## extract indices and differentiate and plot diff; diff should be constant and it is the value of the time constant
 
-    ## Need to add second refinement to peak detection
-    ## sec
+    ## update version to sq*_02.py
