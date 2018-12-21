@@ -7,15 +7,16 @@ import matplotlib.gridspec as gridspec
 import argparse
 import pdb
 from scipy.optimize import curve_fit
+import os
 
-clrlst = ['b','r','g','k','deeppink','cyan','magenta']
+clrlst = ['b','r','g','deeppink','cyan','magenta','k']
 xlbl = 'Frame(n)'
 ylbl = '$\Delta$ ADU'
 
 def func(xx,aa,bb):
     return aa*np.exp(xx*bb)
 
-def calc_timeconstant(data,ridx,offidx,rampoffset,flipdata=False):
+def calc_timeconstant(data,ridx,offidx,rampoffset,savetemp,flipdata=False):
     avg_ledon = []
     onrange = [129,384] ## hard coded 
     avg_ledoff = []
@@ -35,29 +36,36 @@ def calc_timeconstant(data,ridx,offidx,rampoffset,flipdata=False):
         reduced_ramps.append(temp)
 
     ## adding last ramp
-    nlastramp = len(data[ridx[ii]:ridx[ii+1]])
-    lasttemp = data[ridx[ii+1]:ridx[ii+1]+nlastramp]
-    last_onlist = lasttemp[onrange[0]:onrange[1]]
-    last_offlist = lasttemp[offrange[0]:offrange[1]]
-    avg_ledon.append(np.mean(last_onlist))
-    avg_ledoff.append(np.mean(last_offlist))
-    delta_onoff.append(avg_ledon[-1]-avg_ledoff[-1])
-    for ii in range(len(lasttemp)):
-        lasttemp[ii] -= avg_ledoff[-1]
-        lasttemp[ii] /= delta_onoff[-1]
-    reduced_ramps.append(lasttemp)
+    if len(ridx) > 1:
+        nlastramp = len(data[ridx[ii]:ridx[ii+1]])
+        lasttemp = data[ridx[ii+1]:ridx[ii+1]+nlastramp]
+        last_onlist = lasttemp[onrange[0]:onrange[1]]
+        last_offlist = lasttemp[offrange[0]:offrange[1]]
+        avg_ledon.append(np.mean(last_onlist))
+        avg_ledoff.append(np.mean(last_offlist))
+        delta_onoff.append(avg_ledon[-1]-avg_ledoff[-1])
+        for ii in range(len(lasttemp)):
+            lasttemp[ii] -= avg_ledoff[-1]
+            lasttemp[ii] /= delta_onoff[-1]
+        reduced_ramps.append(lasttemp)
 
     ## plotting linear scale in subplots
-    plt.clf()
-    gs = gridspec.GridSpec(nrows=len(reduced_ramps),ncols=1)
-    for ii in range(len(reduced_ramps)): 
-        ax = plt.subplot(gs[ii,0])
-        plt.plot(reduced_ramps[ii],c=clrlst[ii],linewidth=0.5,label='R{} Reduced'.format(ii))
-        plt.axvline(x=rampoffset[ii],c=clrlst[ii],linestyle="-.",linewidth=0.5)
-        plt.legend(prop={'size': 6})
-    plt.xlabel(xlbl)
-    plt.savefig('rampssubplots.pdf')
-    plt.show()
+    if flipdata:
+        plt.clf()
+        gs = gridspec.GridSpec(nrows=len(reduced_ramps),ncols=1)
+        for ii in range(len(reduced_ramps)): 
+            ax = plt.subplot(gs[ii,0])
+            plt.plot(reduced_ramps[ii],c=clrlst[ii],linewidth=0.5,label='R{} Reduced'.format(ii))
+            plt.axvline(x=rampoffset[ii],c=clrlst[ii],linestyle="-.",linewidth=0.5)
+            plt.legend(prop={'size': 6})
+            if ii != len(reduced_ramps)-1:
+                ax.xaxis.set_visible(False)
+            else:
+                ax.xaxis.set_visible(True)
+        plt.subplots_adjust(wspace=0,hspace=0,top=0.94,bottom=0.1,left=0.1,right=0.975)
+        plt.xlabel(xlbl)
+        plt.savefig('rampssubplots.pdf')
+        plt.show()
 
     ## creating list to append to
     rampfit = []
@@ -88,16 +96,20 @@ def calc_timeconstant(data,ridx,offidx,rampoffset,flipdata=False):
         alphalist.append(a)
         betalist.append(b)
 
-    #pdb.set_trace()
     plt.clf()
     gs = gridspec.GridSpec(nrows=len(reduced_ramps),ncols=1)
     if flipdata:
         for ii in range(len(reduced_ramps)):
             ax = plt.subplot(gs[ii,0])
-            plt.plot(flipped[ii],c=clrlst[ii],linewidth=0.5,label='$R{}^*$ Reduced (flipped)'.format(ii))
-            plt.axvline(x=0,c=clrlst[ii],linestyle='-.',linewidth=0.5,label='$R{}^*$ LED-Onset'.format(ii))
-            plt.plot(rampfit[ii],c='k',linestyle='--',linewidth=0.5,label='R${0}^*$ fit ($\\alpha,\\beta$)=({1:.4f},{2:.4f})'.format(ii,alphalist[ii],betalist[ii]))
+            plt.plot(flipped[ii],c=clrlst[ii],linewidth=0.5,label='$R{}$ Reduced (flipped)'.format(ii))
+            plt.axvline(x=0,c=clrlst[ii],linestyle='-.',linewidth=0.5)
+            plt.plot(rampfit[ii],c='k',linestyle='--',linewidth=0.5,label='$f_{0}(n) = \\alpha_{0} \\cdot exp(\\beta_{0} n) = {1:.3f} \\cdot exp({2:.3f} n)$'.format(ii,alphalist[ii],betalist[ii]))
             plt.legend(prop={'size':6})
+            if ii != len(reduced_ramps)-1:
+                ax.xaxis.set_visible(False)
+            else:
+                ax.xaxis.set_visible(True)
+        plt.subplots_adjust(wspace=0,hspace=0,top=0.94,bottom=0.1,left=0.1,right=0.975)
         plt.xlabel(xlbl)
         plt.savefig('offon_tc.pdf')
         plt.show()
@@ -110,12 +122,17 @@ def calc_timeconstant(data,ridx,offidx,rampoffset,flipdata=False):
                 fit[jj] -= 1.
                 fit[jj] *= -1.
             ax = plt.subplot(gs[ii,0])
-            plt.plot(reduced_ramps[ii][:rampoffset[ii]],c=clrlst[ii],linewidth=0.5,label='$R{}^*$ Reduced'.format(ii))
-            plt.axvline(x=len(fit),c=clrlst[ii],linestyle='-.',linewidth=0.5,label='$R{}^*$ LED-Onset'.format(ii))
-            plt.plot(fit,c='k',linestyle='--',linewidth=0.7,label='R${0}^*$ fit ($\\alpha,\\beta$)=({1:.4f},{2:.4f})'.format(ii,alphalist[ii],betalist[ii]))
+            plt.plot(reduced_ramps[ii][:rampoffset[ii]],c=clrlst[ii],linewidth=0.5,label='$R{}^\\dagger$ Reduced'.format(ii))
+            plt.axvline(x=len(fit),c=clrlst[ii],linestyle='-.',linewidth=0.5)
+            plt.plot(fit,c='k',linestyle='--',linewidth=0.7,label='$f_{0}^\\dagger(n) = \\alpha_{0} \\cdot exp(\\beta_{0} n) = {1:.3f} \\cdot exp({2:.3f} n)$'.format(ii,alphalist[ii],betalist[ii]))
             plt.legend(prop={'size':6})
-        plt.xlabel(xlbl)
-        plt.savefig('offon_tc_flipped.pdf')
+            if ii != len(reduced_ramps)-1:
+                ax.xaxis.set_visible(False)
+            else:
+                ax.xaxis.set_visible(True)
+        plt.subplots_adjust(wspace=0,hspace=0,top=0.94,bottom=0.1,left=0.1,right=0.975)
+        plt.xlabel('{} (Where $f_x^\\dagger(n)$ fit on flipped data)'.format(xlbl))
+        plt.savefig('offon_tc_flipped_T{}K.pdf'.format(savetemp))
         plt.show()
         
 
@@ -124,11 +141,16 @@ def calc_timeconstant(data,ridx,offidx,rampoffset,flipdata=False):
         for ii in range(len(reduced_ramps)):
             ax = plt.subplot(gs[ii,0])
             plt.plot(reduced_ramps[ii][rampoffset[ii]:],c=clrlst[ii],linewidth=0.5,label='R{} Reduced'.format(ii))
-            plt.axvline(x=0,c=clrlst[ii],linestyle='-.',linewidth=0.5,label='R{} LED-Offset'.format(ii))
-            plt.plot(rampfit[ii],c='k',linestyle='--',linewidth=0.5,label='R{0} fit ($\\alpha,\\beta)$=({1:.4f},{2:.4f})'.format(ii,alphalist[ii],betalist[ii]))
+            plt.axvline(x=0,c=clrlst[ii],linestyle='-.',linewidth=0.5)
+            plt.plot(rampfit[ii],c='k',linestyle='--',linewidth=0.5,label='$f_{0}(n) = \\alpha_{0} \\cdot exp(\\beta_{0} n) = {1:.3f} \\cdot exp({2:.3f} n)$'.format(ii,alphalist[ii],betalist[ii]))
             plt.legend(prop={'size':6})
+            if ii != len(reduced_ramps)-1:
+                ax.xaxis.set_visible(False)
+            else:
+                ax.xaxis.set_visible(True)
+        plt.subplots_adjust(wspace=0,hspace=0,top=0.94,bottom=0.1,left=0.1,right=0.975)
         plt.xlabel(xlbl)
-        plt.savefig('onoff_tc.pdf')
+        plt.savefig('onoff_tc_T{}K.pdf'.format(savetemp))
         plt.show()
 
     return betalist
