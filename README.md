@@ -1,2 +1,0 @@
-# ifa
-all ifa projects
