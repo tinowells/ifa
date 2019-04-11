@@ -36,6 +36,7 @@ c_map = args.colormap
 ## Dimensions for subarray extractions
 xdim = [[67,93],[99,125],[131,157],[163,189],[195,221],[227,253]] ## 320 axis
 ydim = [65,192] ## 256 axis
+subarrtitle = ['67-to-93 Sub-array','99-to-125 Sub-array','131-to-157 Sub-array','163-to-189 Sub-array','195-to-221 Sub-array','227-to-253 Sub-array']
 nsubarr = len(xdim)
 biaslist = ['2.5', '4.5', '6.5', '7.5', '8.5', '9.5', '10.5', '11.5']
 
@@ -87,12 +88,14 @@ def plot_fullarray(fimage,numbins,xfit,yfit,centers,counts,mu,sig,savefilename):
     plt.plot(xfit, yfit, ls=':', color='k', label='Fit')
     plt.axhline(y=np.max(yfit), color='orange', linewidth=0.75, label='Peak: {}'.format(int(np.max(yfit))))
     plt.axvline(x=mu, color='b', label='$\mu = {0:.2f}$'.format(mu))
-    plt.axvline(x=mu+sig, color='m', label='$\sigma = {0:.2f}$'.format(sig))
+    plt.axvline(x=mu+sig, color='m', label='$\sigma = {0:.2f}$'.format(np.abs(sig)))
     plt.axvline(x=mu-sig, color='m')
     plt.axvline(x=mu+2*sig, color='g')
     plt.axvline(x=mu-2*sig, color='g')
-    plt.xlim(left=histlim[0], right=histlim[1])
+    #plt.xlim(left=histlim[0], right=histlim[1])
+    plt.xlim(left=mu-4*np.abs(sig), right=mu+3*np.abs(sig))
     plt.legend(prop={'size':14},loc='center left')
+    plt.xlabel('Pixel Value')
     plt.subplots_adjust(left=0.05,bottom=0.07,right=0.99,top=0.93)
     plt.savefig('{}'.format(savefilename))
 
@@ -113,6 +116,7 @@ def plot_subarrays(simagelst, numbinslst, xfitlst, yfitlst, centerslst, countsls
         plt.colorbar(shrink=0.9)
         plt.xlabel('Pixel Index', size=8)
         plt.ylabel('Pixel Index', size=8)
+        plt.title(subarrtitle[jj], size=8)
 
         ax = plt.subplot(gs[1,jj])
         plt.hist(simage.flatten(), bins=sbins, color='grey')
@@ -120,14 +124,17 @@ def plot_subarrays(simagelst, numbinslst, xfitlst, yfitlst, centerslst, countsls
         plt.plot(sxfit, syfit, ls=':',color='k')
         plt.axhline(y=np.max(syfit), color='orange', label='Peak: {}'.format(int(np.max(syfit))))
         plt.axvline(x=smu, color='b', label='$\mu = {0:.2f}$'.format(smu))
-        plt.axvline(x=smu+ssig, color='m', label='$\sigma = {0:.2f}$'.format(ssig))
+        plt.axvline(x=smu+ssig, color='m', label='$\sigma = {0:.2f}$'.format(np.abs(ssig)))
         plt.axvline(x=smu-ssig, color='m')
         plt.axvline(x=smu+2*ssig, color='g')
         plt.axvline(x=smu-2*ssig, color='g')
-        plt.xlim(left=histlim[0],right=histlim[1])
+        #plt.xlim(left=histlim[0],right=histlim[1])
+        plt.xlim(left=smu-4*np.abs(ssig), right=smu+3*np.abs(ssig))
         plt.legend(prop={'size':8},loc='upper left', bbox_to_anchor=(-0.25, 1.1),framealpha=1.)
-        if ii == 0:
+        if jj == 0:
             plt.ylabel('Pixel Counts',size=8)
+            plt.xlabel('Pixel Values',size=8)
+        else:
             plt.xlabel('Pixel Values',size=8)
     plt.subplots_adjust(left=0.05,bottom=0.07,right=0.97,top=0.96,wspace=0.25,hspace=0.1)
     plt.savefig('{}'.format(subsavefilename))
@@ -236,7 +243,7 @@ def main(filelst):
                 except Exception:
                     counter += 1
                     goodfit = False
-            if counter == len(checkidxs): 
+            if counter == len(checkidxs):
                 print('SUBPARMETERS COULD NOT BE MET: RETURNING ONES')
                 sub_params = [1, 1, 1, 1]
 
@@ -300,4 +307,4 @@ if __name__=='__main__':
         shutil.move(figfile, 'figures/')
 
     print('~~~~~~~~~~~~~~~~\n\n\n~~~ FINISHED ~~~\n\n\n~~~~~~~~~~~~~~~~')
-    print('See created directories for full and sub array files, and figures.')
+    print('See created directories for full- and sub-array files, and figures.')
